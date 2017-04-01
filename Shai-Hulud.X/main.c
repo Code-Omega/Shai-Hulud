@@ -8,7 +8,6 @@
 #include "xc.h"
 #include <stdio.h>
 #include <libpic30.h>
-#include <uart.h>
 #include <p30F4011.h>
 
 _FOSC(CSW_FSCM_OFF & FRC);
