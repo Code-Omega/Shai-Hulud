@@ -1,0 +1,29 @@
+TODO:
+
+Get socket adapter
+
+    
+UI communication (function)
+    Computer side
+        C/C++
+    MCU side
+        C (MPLab)
+    
+    UART
+        Basic two way communication
+        Interrupt
+    
+    
+Output to Pin (function)
+    pin number
+    contract extend
+    how to use PWM
+    calls sensor function
+    returns when complete
+    
+Sensor (function)
+    Fake input for now
+    
+Global variables
+    Speed
+    

@@ -1,0 +1,71 @@
+
+
+
+# Interfacing commands
+
+## first priority
+go forward
+go backward
+turn left
+turn right
+
+## second priority
+speed
+
+## third priority
+pitch
+yaw
+
+
+
+# Interfacing scheme
+arrow keys 
+up -> forward
+down -> backward
+left -> left 
+right -> right
+(turning has 3 states: left-neutral-right)
+(moving also has 3 states (one neutral))
+(each command shifts state by one)
+
+--------------------------------------
+
+# Feedback to user
+
+## status signal (LED (multicolor))
+if the system is on (and idle)
+if the system is busy (not executing)
+if is executing commands
+
+## event related messages
+system fail (MCU interrupt)
+unexpected measurement from sensors 
+
+## measurement (if prompted)
+
+--------------------------------------
+
+# Protocol
+
+Message format "0xF,0xF"
+
+
+## individual actuation
+function takes in (actuator_number, extend_or_contract)
+
+check sensor output in while(!interrupt)
+
+
+--------------------------------------
+
+# state machine
+
+neutral state
+
+
+
+
+
+
+
+
