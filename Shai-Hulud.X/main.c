@@ -125,33 +125,24 @@ int main(void) {
     PTMR  = 0x0000;
  
     PDC1 = 0x0032; // 0x32 = 50 , 50% duty cycle 
-    PDC2 = 0x0000;
-    PDC3 = 0x0000;
+    PDC2 = 0x0032;
+    PDC3 = 0x0032;
     /**********DO SOMETHING ABOUT FLTACON for input L and H select ***************/
     
     //FLTACON = 0x030F; 
     
-        PTCON = 0x8000;                 // Enabling the PWM module (OWM time base timer enable bit)
+    PTCON = 0x8000;                 // Enabling the PWM module (OWM time base timer enable bit)
 
     /*end setting up pwm */
     __C30_UART = 1; 
     
     int i = 0;
     char c;
-    
+    char current_command;
     while(1)
     {
     
-        printf("start of loop\n");
-        /*printf("loop\n");
-        printf("start of loop\n");
-        printf("start of loop\n");
-        printf("start of loop\n");
-      //printf("\rhello: %d\n", i);*/
-       //j =  read(2, save_data, 256);
-        //scanf("%s", save_data);
-        //while (U1STAbits.URXDA == 0){printf("%d\n", i);__delay32(30000);};           
-        //U1STAbits.OERR = 0;
+ 
         if (U1STAbits.URXDA == 1)
         {
             // If a '1' or '0' were received, set RD0 and RD1
