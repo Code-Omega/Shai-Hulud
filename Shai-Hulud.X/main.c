@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <libpic30.h>
 #include <p30F4011.h>
+#include <time.h>
+
+#define Fclock 7372800
+#define Fcy Fclock/4
 
 _FOSC(CSW_FSCM_OFF & FRC);
 _FWDT(WDT_OFF);
@@ -54,6 +58,7 @@ len -= i; // Calculate how many characters we read before breaking
 
 char RXbuffer[80];	//buffer used to store characters from serial port
 int str_pos = 0; 	//position in the RXbuffer
+char current_command;
 /* pin for enablePWM and disablePWM
  * 
  * 0 - PWM1L
@@ -64,6 +69,14 @@ int str_pos = 0; 	//position in the RXbuffer
  * 5 - PWM3H
  */
 
+// delay and check whether the current command is updated. If it is, return -1. if not return 0;
+int delayMS(int milliseconds){
+    __delay32((Fcy/1000)*milliseconds);
+    if(current_command != U1RXREG)
+        return -1;
+    return 0;
+        
+}
 
 
 void enablePWM(int pin){
@@ -79,7 +92,11 @@ void forward(int speed){
    
     for(int i = 0; i < 6; i++){
         enablePWM(i);
-        //delay for like 1 sec? <--- **********
+        if(delayMS(400) == -1){
+            FLTACON = 0;
+            return;
+        }
+            ;
         disablePWM(i);
         //delay if necessary (dont think it'll be)
         
@@ -90,7 +107,10 @@ void backward(int speed){
    
     for(int i = 5; i >= 0; i--){
         enablePWM(i);
-        //delay for like 1 sec? <--- **********
+        if(delayMS(400) == -1){
+            FLTACON = 0;
+            return;
+        }
         disablePWM(i);
         //delay if necessary (dont think it'll be)
         
@@ -138,7 +158,6 @@ int main(void) {
     
     int i = 0;
     char c;
-    char current_command;
     while(1)
     {
     
@@ -147,9 +166,42 @@ int main(void) {
         {
             // If a '1' or '0' were received, set RD0 and RD1
             c = U1RXREG;
-            if (c == '1') {printf("command 1: %c\n", c);}
-            else if (c == '0') {printf("command 0: %c\n", c);}
-            else {printf("string: %c\n", c);}
+            //if (c == '1') {printf("command 1: %c\n", c);}
+            //else if (c == '0') {printf("command 0: %c\n", c);}
+            //else {printf("string: %c\n", c);}
+            
+            if((c == 'w')||(c == 'a')||(c == 's')||(c == 'd')||(c == 'n')){
+                current_command = c;
+            }
+            
+        
+            switch(current_command){
+                case 'w': //forward
+                    forward(0);
+                    break;
+                    
+                case 's' ://backward
+                    backward(0);
+                    break;
+               
+                case 'a': // turn left
+                        
+                    break;
+                case 'd': // turn right
+                    
+                    break;
+                case 'n': //neutral 
+                    FLTACON = 0;
+                    break;
+                default: // same as neutral
+                    FLTACON = 0;
+                    break;
+            }
+        
+        
+        
+        
+        
         }
         /*if(U1RXREG || U1STAbits.URXDA)
             printf("recieved: %s\n", U1RXREG);
