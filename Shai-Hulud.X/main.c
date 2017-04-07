@@ -54,13 +54,86 @@ len -= i; // Calculate how many characters we read before breaking
 
 char RXbuffer[80];	//buffer used to store characters from serial port
 int str_pos = 0; 	//position in the RXbuffer
+/* pin for enablePWM and disablePWM
+ * 
+ * 0 - PWM1L
+ * 1 - PWM1H
+ * 2 - PWM2L
+ * 3 - PWM2H
+ * 4 - PWM3L
+ * 5 - PWM3H
+ */
+
+
+
+void enablePWM(int pin){
+    FLTACON = FLTACON|(0x100000000<<pin);
+    
+}
+
+void disablePWM(int pin){
+    FLTACON = FLTACON&(~(0x100000000<<pin));
+}
+
+void forward(int speed){
+   
+    for(int i = 0; i < 6; i++){
+        enablePWM(i);
+        //delay for like 1 sec? <--- **********
+        disablePWM(i);
+        //delay if necessary (dont think it'll be)
+        
+    }
+}
+
+void backward(int speed){
+   
+    for(int i = 5; i >= 0; i--){
+        enablePWM(i);
+        //delay for like 1 sec? <--- **********
+        disablePWM(i);
+        //delay if necessary (dont think it'll be)
+        
+    }
+}
+
+
 
 int main(void) {
   
     TRISB = 0;
-    U1BRG = 11;
+    U1BRG = 11; // for baud rate
     U1MODEbits.UARTEN = 1;
 
+    /*setting up pwm*/ 
+    /* FLTACON, FLTBCON : fault a control register: decides PWM H or L */
+    
+    //TRISbits.TRISB2 = 1;
+    //TRISbits.TRISB3 = 1;
+    // PTPER = (Fcy/PWMfrequency) - 1 
+    PTPER = 0x0032;                  // 0x0032 = 50
+                         
+                                           // Frequency - approx.200KHz
+    
+      /**********DO SOMETHING ABOUT FLTACON for input L and H select ***************/
+    FLTACON = 0x0300; 
+    /**** cant select and do pwm at the same time ****/
+    
+    //    SEVTCMP = 0xFFFF;
+    PWMCON1 = 0x0FFF;            // RE0,RE2 are configured as PWM outputs whereas rest are Normal I/Os(PWM1L & PWM2L)
+    PWMCON2 = 0x0000;            // Configured to obtain Duty Cycle through PDC registers
+    PTMR  = 0x0000;
+ 
+    PDC1 = 0x0032; // 0x32 = 50 , 50% duty cycle 
+    PDC2 = 0x0000;
+    PDC3 = 0x0000;
+    /**********DO SOMETHING ABOUT FLTACON for input L and H select ***************/
+    
+    //FLTACON = 0x030F; 
+    
+        PTCON = 0x8000;                 // Enabling the PWM module (OWM time base timer enable bit)
+
+    /*end setting up pwm */
     __C30_UART = 1; 
     
     int i = 0;
@@ -92,6 +165,7 @@ int main(void) {
         
         i++;*/
         
+            
 
 
 		//str_pos = 0;	//returns the pointer to position zero in the circular buffer
