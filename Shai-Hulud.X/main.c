@@ -19,46 +19,10 @@ _FWDT(WDT_OFF);
 _FBORPOR(MCLR_DIS);
 
 
-/*int __attribute__((__weak__, __section__(".libc"))) 
-read(int handle, void *buffer, unsigned int len)
-{
- int i; 
- int readChar;
- switch (handle) {
- case 0: // stdout
- case 1: // stdin
- case 2: // stderr
- for (i = len; i; --i) {
- while (!U1STAbits.URXDA); // wait until UART1 rx char ready
- printf("after while loop \n");
- readChar = U1RXREG;
- *(char*)buffer++ = readChar;
- U1TXREG = readChar; // echo readChar back to serial out...
- 
- // You may have to change your expected "enter key" values...
- // carriage return = 0x0D = '\r'
- // newline = 0x0A = '\n'
- if (readChar == 0x0D || readChar == 0x0A) {
- // These reset the terminal. I'm not sure if we need these.
-// U1TXREG = '\r';
- U1TXREG = '\n';
- break; // break out of the for loop...
- }
- }
-len -= i; // Calculate how many characters we read before breaking
- break;
- default:
- break;
- }
- 
- return len;
-}
-*/
-
-
 char RXbuffer[80];	//buffer used to store characters from serial port
 int str_pos = 0; 	//position in the RXbuffer
 char current_command;
+int changeFlag;
 /* pin for enablePWM and disablePWM
  * 
  * 0 - PWM1L
@@ -72,12 +36,17 @@ char current_command;
 // delay and check whether the current command is updated. If it is, return -1. if not return 0;
 int delayMS(int milliseconds){
     __delay32((Fcy/1000)*milliseconds);
-    if(current_command != U1RXREG)
-        return -1;
-    return 0;
-        
+    
+    if(U2STAbits.URXDA == 0) // if buffer is empty, do nothing
+        return 0;
+    
+    char c = U2RXREG; // if the buffer is non-empty, and the current command is the same, do nothing
+    if(current_command == c){
+        return 0;
+    }
+    current_command = c; // update current command are return -1;
+    return -1;  
 }
-
 
 void enablePWM(int pin){
     FLTACON = FLTACON|(0x100000000<<pin);
@@ -89,23 +58,21 @@ void disablePWM(int pin){
 }
 
 void forward(int speed){
-   
-    for(int i = 0; i < 6; i++){
+    int i;
+    for(i = 0; i < 6; i++){
         enablePWM(i);
         if(delayMS(400) == -1){
             FLTACON = 0;
             return;
         }
-            ;
         disablePWM(i);
-        //delay if necessary (dont think it'll be)
-        
+        //delay if necessary (dont think it'll be) 
     }
 }
 
 void backward(int speed){
-   
-    for(int i = 5; i >= 0; i--){
+    int i;
+    for(i = 5; i >= 0; i--){
         enablePWM(i);
         if(delayMS(400) == -1){
             FLTACON = 0;
@@ -113,18 +80,59 @@ void backward(int speed){
         }
         disablePWM(i);
         //delay if necessary (dont think it'll be)
-        
     }
 }
 
+ void __attribute__((interrupt, no_auto_psv)) _U2RXInterrupt( void ) 
+ { 
+    char c = U2RXREG;
 
+    //if(c == 'i'){
+     //   printf("interrupt happen\n");            
+   // }
+    
+    current_command =  c;
+    IFS1bits.U2RXIF = 0; // Clear RX Interrupt flag 
+ } 
+ 
+ unsigned int readADC(int channel)
+{
+    ADCHS = channel;          // Select the requested channel
+    ADCON1bits.SAMP = 1;      // start sampling
+    __delay32(18);            // 10us delay @ 1.8 MIPS
+    ADCON1bits.SAMP = 0;      // start Converting
+    while (!ADCON1bits.DONE); // Shouldn't take 12 * Tad = 1.2us
+    return ADCBUF0;
+}
 
 int main(void) {
-  
-    TRISB = 0;
-    U1BRG = 11; // for baud rate
-    U1MODEbits.UARTEN = 1;
+    //TRISB = 0 // 1 for sensors
+    _TRISB0 = 0;
+    _TRISB1 = 1;
+    
+    ADPCFG = 0xFF01;     // Lowest 8 PORTB pins (except 0th) are analog inputs
+    ADCON1 = 0;          // Manually clear SAMP to end sampling, start conversion
+    ADCON2 = 0;          // Voltage reference from AVDD and AVSS
+    ADCON3 = 0x0005;     // Manual Sample, ADCS=5 -&gt; Tad = 3*Tcy = 0.1us
+    ADCON1bits.ADON = 1; // Turn ADC ON
+    
+    U2BRG = 11; // for baud rate
+    
+     /* setting up UART interrupts*/
+    U2STAbits.URXISEL = 0; // interrupt after 1 character is received
+    
+    IPC6bits.U2RXIP = 3; // set priority of interrupt (7 - highest, 0 - lowest)
+    IFS1bits.U2RXIF = 0; // reset the interrupt flag to 0 (interrupt has not occurred)
+    IEC1bits.U2RXIE = 1; // Enable UART RX interrupt     
+    
+    U2MODEbits.UARTEN = 1;
 
+   
+    
+    
+    
+    
+    
     /*setting up pwm*/ 
     /* FLTACON, FLTBCON : fault a control register: decides PWM H or L */
     
@@ -154,7 +162,7 @@ int main(void) {
     PTCON = 0x8000;                 // Enabling the PWM module (OWM time base timer enable bit)
 
     /*end setting up pwm */
-    __C30_UART = 1; 
+    __C30_UART = 2; 
     
     int i = 0;
     char c;
@@ -162,19 +170,24 @@ int main(void) {
     {
     
  
-        if (U1STAbits.URXDA == 1)
+        if (U2STAbits.URXDA == 1)
         {
             // If a '1' or '0' were received, set RD0 and RD1
-            c = U1RXREG;
             //if (c == '1') {printf("command 1: %c\n", c);}
             //else if (c == '0') {printf("command 0: %c\n", c);}
             //else {printf("string: %c\n", c);}
-            
+            /*
+            if(changeFlag == 0){
+            c = U2RXREG;
             if((c == 'w')||(c == 'a')||(c == 's')||(c == 'd')||(c == 'n')){
                 current_command = c;
             }
-            
-        
+            }else{
+                
+                changeFlag = 0;
+            }
+                 
+        */
             switch(current_command){
                 case 'w': //forward
                     forward(0);
@@ -216,8 +229,12 @@ int main(void) {
         
         
         _LATB0 = 1 - _LATB0;
-        __delay32(1200000);
+        __delay32(120000);
         
+        //simple ADC readout
+        int n = readADC(1);
+        printf("adc -> %d\n", n);
+        8
     }
     
     return 0;
