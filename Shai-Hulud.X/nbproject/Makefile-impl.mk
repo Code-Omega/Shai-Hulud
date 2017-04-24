@@ -27,11 +27,11 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 PROJECTNAME=Shai-Hulud.X
 
 # Active Configuration
-DEFAULTCONF=3_3V
+DEFAULTCONF=normal
 CONF=${DEFAULTCONF}
 
 # All Configurations
-ALLCONFS=normal 3_3V 
+ALLCONFS=normal 3_3V 5_0V 
 
 
 # build
@@ -47,6 +47,7 @@ ALLCONFS=normal 3_3V
 .clobber-impl: .clobber-pre .depcheck-impl
 	    ${MAKE} SUBPROJECTS=${SUBPROJECTS} CONF=normal clean
 	    ${MAKE} SUBPROJECTS=${SUBPROJECTS} CONF=3_3V clean
+	    ${MAKE} SUBPROJECTS=${SUBPROJECTS} CONF=5_0V clean
 
 
 
@@ -54,6 +55,7 @@ ALLCONFS=normal 3_3V
 .all-impl: .all-pre .depcheck-impl
 	    ${MAKE} SUBPROJECTS=${SUBPROJECTS} CONF=normal build
 	    ${MAKE} SUBPROJECTS=${SUBPROJECTS} CONF=3_3V build
+	    ${MAKE} SUBPROJECTS=${SUBPROJECTS} CONF=5_0V build
 
 
 

@@ -21,8 +21,10 @@ _FBORPOR(MCLR_DIS);
 
 char RXbuffer[80];	//buffer used to store characters from serial port
 int str_pos = 0; 	//position in the RXbuffer
-char current_command;
+char current_command = 'n';
 int changeFlag;
+char current_position = 'm';
+char current_velocity = 'p';
 /* pin for enablePWM and disablePWM
  * 
  * 0 - PWM1L
@@ -49,22 +51,23 @@ int delayMS(int milliseconds){
 }
 
 void enablePWM(int pin){
-    FLTACON = FLTACON|(0x100000000<<pin);
+    FLTACON = FLTACON|(0b100000000<<pin);
     
 }
 
 void disablePWM(int pin){
-    FLTACON = FLTACON&(~(0x100000000<<pin));
+    FLTACON = FLTACON&(~(0b100000000<<pin));
 }
 
 void forward(int speed){
     int i;
-    for(i = 0; i < 6; i++){
+    for(i = 0; i < 4; i++){
         enablePWM(i);
-        if(delayMS(400) == -1){
+        /*if(delayMS(400) == -1){
             FLTACON = 0;
             return;
-        }
+        }*/
+        delayMS(400);
         disablePWM(i);
         //delay if necessary (dont think it'll be) 
     }
@@ -72,27 +75,79 @@ void forward(int speed){
 
 void backward(int speed){
     int i;
-    for(i = 5; i >= 0; i--){
+    for(i = 3; i >= 0; i--){
         enablePWM(i);
-        if(delayMS(400) == -1){
+       /* if(delayMS(400) == -1){
             FLTACON = 0;
             return;
-        }
+        }*/
+        delayMS(400);
         disablePWM(i);
         //delay if necessary (dont think it'll be)
     }
+}
+
+void left(int speed){
+
+    enablePWM(4);
+}
+
+void right(int speed){
+    
+    enablePWM(5);
+}
+
+void neutralPosition(int speed){
+    disablePWM(4);
+    disablePWM(5);
 }
 
  void __attribute__((interrupt, no_auto_psv)) _U2RXInterrupt( void ) 
  { 
     char c = U2RXREG;
 
-    //if(c == 'i'){
-     //   printf("interrupt happen\n");            
-   // }
+//    if(c == 'i'){
+//        printf("interrupt happen\n");            
+//    }
+//    while(1){
+//              _LATB0 = 1 - _LATB0;
+//              delayMS(1000);
+//    }
+    
+
+    
+//    while(1){
+//        backward(1);
+//    }
     
     current_command =  c;
     IFS1bits.U2RXIF = 0; // Clear RX Interrupt flag 
+    
+    
+    if (current_command == 'l' || current_command == 'r' 
+                || current_command == 'm'){
+            
+            current_position = current_command;
+    }
+    
+            
+        switch(current_position){
+            case 'l':
+                left(0);
+                break;
+            case 'r':
+                right(0);
+                break;
+            case 'm':
+                neutralPosition(0);
+                break;
+            default:
+                neutralPosition(0);
+                break;
+        }
+        
+        
+    
  } 
  
  unsigned int readADC(int channel)
@@ -144,7 +199,7 @@ int main(void) {
                                            // Frequency - approx.200KHz
     
       /**********DO SOMETHING ABOUT FLTACON for input L and H select ***************/
-    FLTACON = 0x0300; 
+    FLTACON = 0x030F; 
     /**** cant select and do pwm at the same time ****/
     
     //    SEVTCMP = 0xFFFF;
@@ -163,15 +218,15 @@ int main(void) {
 
     /*end setting up pwm */
     __C30_UART = 2; 
-    
+        
     int i = 0;
     char c;
     while(1)
     {
-    
- 
-        if (U2STAbits.URXDA == 1)
-        {
+       // FLTACON = 0xFF0F;
+        
+//        if (U2STAbits.URXDA == 1)
+//        {
             // If a '1' or '0' were received, set RD0 and RD1
             //if (c == '1') {printf("command 1: %c\n", c);}
             //else if (c == '0') {printf("command 0: %c\n", c);}
@@ -187,35 +242,71 @@ int main(void) {
                 changeFlag = 0;
             }
                  
+             * 
+             *\
         */
-            switch(current_command){
-                case 'w': //forward
-                    forward(0);
-                    break;
-                    
-                case 's' ://backward
-                    backward(0);
-                    break;
-               
-                case 'a': // turn left
-                        
-                    break;
-                case 'd': // turn right
-                    
-                    break;
-                case 'n': //neutral 
-                    FLTACON = 0;
-                    break;
-                default: // same as neutral
-                    FLTACON = 0;
-                    break;
-            }
         
+     //   if(current_command == '')
         
-        
-        
-        
+//        
+//        if(current_command == '')
+//        
+//            switch(current_command){
+//                case 'f': // 
+//                    forward(0);
+//                    printf("hello\n");
+//                    break;
+//                case 'p' ://backward
+//                    backward(0);
+//                    break;
+//               
+//                case 'l': // turn left
+//                    left(0);
+//                    break;
+//                case 'r': // turn right
+//                    right(0);
+//                    break;
+//                case 'n': //neutral position
+//                    neutralPosition(0);
+//                    break;
+//                default: // disable every acutator
+//                    FLTACON = 0x000F;
+//                    break;
+//            }
+//        
+//        
+        if(current_command == 'f' || current_command == 'b' 
+                || current_command == 'p'){
+            
+            current_velocity = current_command;
         }
+        
+        
+        switch(current_velocity){
+            case 'f':
+                forward(0);
+                break;
+            case 'b':
+                backward(0);
+                break;
+            case 'p':
+                disablePWM(0);
+                disablePWM(1);
+                disablePWM(2);
+                disablePWM(3);
+                break;
+            default:
+                disablePWM(0);
+                disablePWM(1);
+                disablePWM(2);
+                disablePWM(3);
+                break;
+        }
+        
+
+        
+        
+        //}
         /*if(U1RXREG || U1STAbits.URXDA)
             printf("recieved: %s\n", U1RXREG);
         
@@ -234,7 +325,6 @@ int main(void) {
         //simple ADC readout
         int n = readADC(1);
         printf("adc -> %d\n", n);
-        8
     }
     
     return 0;
